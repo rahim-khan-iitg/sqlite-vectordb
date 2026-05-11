@@ -2,3 +2,4 @@ test_db/
 .idea/
 __pycache__
 *.so
+.vscode/

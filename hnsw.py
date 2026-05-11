@@ -495,9 +495,9 @@ if __name__ == "__main__":
     np.random.seed(42)
 
     DIM = 128  # vector dimension
-    N = 2000  # number of elements to index
+    N = 1000  # number of elements to index
     K = 10  # nearest neighbors to retrieve
-    EF = 100  # search ef
+    EF = 32  # search ef
 
     print("=" * 60)
     print("HNSW Demo")
@@ -505,7 +505,7 @@ if __name__ == "__main__":
     print(f"  Indexing {N} random {DIM}-d vectors …")
 
     # Build the index
-    index = HNSW(M=16, ef_construction=200, use_heuristic=True)
+    index = HNSW(M=32, ef_construction=32, use_heuristic=True)
     vectors = np.random.rand(N, DIM).astype(np.float32)
     for i, vec in enumerate(vectors):
         index.insert(vec)

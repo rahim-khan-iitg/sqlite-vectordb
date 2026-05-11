@@ -9,7 +9,8 @@ class Point(BaseModel):
 
 class DistanceMetric(Enum):
     COSINE="cosine"
-    MANHATTAN="manhattan"
+    MANHATTAN="cityblock"
+    EUCLIDEAN="euclidean"
 
 class CollectionMeta(BaseModel):
     collection_name:str
