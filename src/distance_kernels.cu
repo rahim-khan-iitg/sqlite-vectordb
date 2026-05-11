@@ -75,6 +75,147 @@ __global__ void similarity_kernel(
     if (tid == 0)
         scores[row_idx] = score / (sqrtf(mag) * query_mag[0] + 1e-8f);
 }
+// distance functions
+__global__ void cosine_distance(
+    const float* matrix,
+    const float* query,
+    float* query_mag,
+    float* scores,
+    int M,
+    int N)
+{
+    int row_idx = blockIdx.x;
+
+    if (row_idx >= M)
+        return;
+
+    int tid = threadIdx.x;
+    int lane = tid % 32;
+    int wid = tid / 32;
+    int num_warps = blockDim.x / 32;
+
+    extern __shared__ float smem[];
+
+    float* sscore = smem;
+    float* smag   = smem + num_warps;
+
+    const float* matrix_row = matrix + row_idx * N;
+
+    float score = 0.0f;
+    float mag   = 0.0f;
+
+    for (int col = tid; col < N; col += blockDim.x)
+    {
+        float val = matrix_row[col];
+
+        score += val * query[col];
+        mag   += val * val;
+    }
+
+    score = warp_reduce(score);
+    mag   = warp_reduce(mag);
+
+    if (lane == 0)
+    {
+        sscore[wid] = score;
+        smag[wid]   = mag;
+    }
+
+    __syncthreads();
+
+    score = (tid < num_warps) ? sscore[tid] : 0.0f;
+    mag   = (tid < num_warps) ? smag[tid]   : 0.0f;
+
+    score = warp_reduce(score);
+    mag   = warp_reduce(mag);
+
+    if (tid == 0)
+        scores[row_idx] =1- score / (sqrtf(mag) * query_mag[0] + 1e-8f);
+}
+
+
+__global__ void euclidean_distance(
+    const float* matrix,
+    const float* query,
+    float* scores,
+    int M,
+    int N)
+{
+    int row_idx = blockIdx.x;
+
+    if (row_idx >= M)
+        return;
+
+    int tid = threadIdx.x;
+    int lane = tid % 32;
+    int wid = tid / 32;
+    int num_warps = blockDim.x / 32;
+
+    extern __shared__ float sdata[];
+    const float* matrix_row = matrix + row_idx * N;
+
+    float score = 0.0f;
+    for (int col = tid; col < N; col += blockDim.x)
+    {
+        float val = matrix_row[col]-query[col];
+
+        score += val *val ;
+    }
+    score = warp_reduce(score);
+
+    if (lane == 0)
+    {
+        sdata[wid] = score;
+    }
+    __syncthreads();
+    score = (tid < num_warps) ? sdata[tid] : 0.0f;
+    score = warp_reduce(score);
+
+    if (tid == 0)
+        scores[row_idx] =sqrtf(score);
+}
+
+__global__ void cityblock_distance(
+    const float* matrix,
+    const float* query,
+    float* scores,
+    int M,
+    int N)
+{
+    int row_idx = blockIdx.x;
+
+    if (row_idx >= M)
+        return;
+
+    int tid = threadIdx.x;
+    int lane = tid % 32;
+    int wid = tid / 32;
+    int num_warps = blockDim.x / 32;
+
+    extern __shared__ float sdata[];
+    const float* matrix_row = matrix + row_idx * N;
+
+    float score = 0.0f;
+    for (int col = tid; col < N; col += blockDim.x)
+    {
+        float val = matrix_row[col]-query[col];
+
+        score += abs(val) ;
+    }
+    score = warp_reduce(score);
+
+    if (lane == 0)
+    {
+        sdata[wid] = score;
+    }
+    __syncthreads();
+    score = (tid < num_warps) ? sdata[tid] : 0.0f;
+    score = warp_reduce(score);
+
+    if (tid == 0)
+        scores[row_idx] =sqrtf(score);
+}
+
 
 
 extern "C"
